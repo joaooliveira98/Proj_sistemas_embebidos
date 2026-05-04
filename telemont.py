@@ -22,6 +22,7 @@ def configurar_pinos_GPIO_sensores():
     pass
 
 def setup():
+    pins['Pin2'] = machine.Pin('Pin2', machine.Pin.OUT)
     conectar_wifi()
     sincronizar_relogio_ntp()
     if(not debug_mode):
@@ -51,9 +52,9 @@ def loop():
         t2 = random_number_between(10.0, 25.0, 2)
     else:
         # Leitura de sensores reais
-        t0 = ler_sensor_fisico(0)
-        t1 = ler_sensor_fisico(1)
-        t2 = ler_sensor_fisico(2)
+        t0 = ler_sensor_fisico('Pin0')
+        t1 = ler_sensor_fisico('Pin1')
+        t2 = ler_sensor_fisico('Pin3')
     # E) Construção do Objeto JSON
     payload = {
     "Equipamento_ID": equipment_id,
