@@ -10,7 +10,7 @@ debug_mode = True
 equipment_id = 10
 endpoint = "http://servidor:8000/temperatura"
 token_JWT = ''
-pins = []
+pins = dict()
 
 def conectar_wifi():
     pass
