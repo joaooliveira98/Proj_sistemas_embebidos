@@ -1,19 +1,37 @@
 from os import wait
 import random
 import math
-from time import time
+import time
 import requests
 import machine
+import network
 
 # --- Configurações Globais ---
 debug_mode = True
 equipment_id = 10
 endpoint = "http://servidor:8000/temperatura"
+ssid = 'NETLAB-8024'
+password = ''
 token_JWT = ''
 pins = dict()
 
 def conectar_wifi():
-    pass
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+
+    if not wlan.isconnected():
+        print('Connecting to network...')
+        wlan.connect(ssid, password)
+
+        timeout = 15 # seconds
+        start = time.time()
+
+        while not wlan.isconnected():
+            if time.time() - start > timeout:
+                raise RuntimeError('Wi-Fi connect timeout')
+            time.sleep(0.5)
+
+    print('connected, ifconfig =', wlan.ifconfig())
 
 def sincronizar_relogio_ntp():
     pass
@@ -22,15 +40,16 @@ def configurar_pinos_GPIO_sensores():
     pass
 
 def setup():
-    pins['Pin2'] = machine.Pin('Pin2', machine.Pin.OUT)
+    pins['Pin2'] = machine.Pin(2, machine.Pin.OUT)
     conectar_wifi()
     sincronizar_relogio_ntp()
     if(not debug_mode):
         configurar_pinos_GPIO_sensores()
 
 def obter_timestamp_formatado(): # Formato: YYYY-MM-DD HH:MM:SS
-    time()
-    pass
+    t = time.time()
+    time_structured = time.gmtime(t)
+    return time.strftime("%Y-%m-%d %T",time_structured)
 
 def random_number_between(max:float, min:float, decimal_places) -> float:
     return (math.floor((random.random() * (max - min + 1))*10**decimal_places)/10**decimal_places) + min
@@ -42,7 +61,9 @@ def piscar_LED_feedback():
     pass
 
 def loop():
-    t0 = 0.0, t1 = 0.0, t2 = 0.0
+    t0 = 0.0
+    t1 = 0.0
+    t2 = 0.0
     agora = obter_timestamp_formatado() # Formato: YYYY-MM-DD HH:MM:SS
     # D) Lógica de Aquisição
     if debug_mode == True:
@@ -69,3 +90,7 @@ def loop():
     if resposta.status == 201:
         piscar_LED_feedback()
         wait(1000) # Intervalo de atualização
+
+setup()
+
+loop()
