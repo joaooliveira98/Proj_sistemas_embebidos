@@ -1,4 +1,4 @@
-from os import wait
+import os
 import random
 import math
 import time
@@ -23,7 +23,7 @@ def conectar_wifi():
         print('Connecting to network...')
         wlan.connect(ssid, password)
 
-        timeout = 15 # seconds
+        timeout = 120 # seconds
         start = time.time()
 
         while not wlan.isconnected():
@@ -89,7 +89,7 @@ def loop():
     resposta = requests.post(endpoint, data=payload, headers=headers)
     if resposta.status == 201:
         piscar_LED_feedback()
-        wait(1000) # Intervalo de atualização
+        time.sleep(0.1) # Intervalo de atualização
 
 setup()
 
