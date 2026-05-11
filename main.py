@@ -2,7 +2,7 @@ import os
 import random
 import math
 import time
-import requests
+import urequests
 import machine
 import network
 
@@ -10,7 +10,7 @@ import network
 debug_mode = True
 equipment_id = 10
 endpoint = "http://servidor:8000/temperatura"
-ssid = 'NETLAB-8024'
+ssid = 'NETLAB-0024'
 password = ''
 token_JWT = ''
 pins = dict()
@@ -23,11 +23,11 @@ def conectar_wifi():
         print('Connecting to network...')
         wlan.connect(ssid, password)
 
-        timeout = 120 # seconds
+        timeout = 15 # seconds
         start = time.time()
 
         while not wlan.isconnected():
-            if time.time() - start > timeout:
+            if time.time():
                 raise RuntimeError('Wi-Fi connect timeout')
             time.sleep(0.5)
 
@@ -49,7 +49,15 @@ def setup():
 def obter_timestamp_formatado(): # Formato: YYYY-MM-DD HH:MM:SS
     t = time.time()
     time_structured = time.gmtime(t)
-    return time.strftime("%Y-%m-%d %T",time_structured)
+    timeStr = "{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}".format(
+        time_structured[0],  # year
+        time_structured[1],  # month
+        time_structured[2],  # day
+        time_structured[3],  # hour
+        time_structured[4],  # minute
+        time_structured[5],  # second
+    )
+    return timeStr
 
 def random_number_between(max:float, min:float, decimal_places) -> float:
     return (math.floor((random.random() * (max - min + 1))*10**decimal_places)/10**decimal_places) + min
@@ -58,6 +66,8 @@ def ler_sensor_fisico(pin):
     pass
 
 def piscar_LED_feedback():
+    pins['Pin2'].on()
+    pins['Pin2'].off()
     pass
 
 def loop():
@@ -85,10 +95,12 @@ def loop():
     "Temp2": t2
     }
     # Envio Seguro via API
-    headers = {"Authorization": "Bearer " + token_JWT, "Content-Type": "application/json"}
-    resposta = requests.post(endpoint, data=payload, headers=headers)
+    headers = {""" "Authorization": "Bearer " + token_JWT, """ "Content-Type": "application/json"}
+    print(payload)
+    resposta = urequests.request('POST',endpoint, data=payload, headers=headers)
     if resposta.status == 201:
         piscar_LED_feedback()
+        print("Success")
         time.sleep(0.1) # Intervalo de atualização
 
 setup()
