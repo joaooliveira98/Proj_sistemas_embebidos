@@ -1,16 +1,25 @@
-import os
 import random
 import math
 import time
 import urequests
 import machine
+from machine import Pin
+from machine import Timer
+from machine import RTC
+"""from threading import Timer"""
+import dht
+import json
 import network
+import ntptime
 
 # --- Configurações Globais ---
 debug_mode = True
 equipment_id = 10
-endpoint = "http://servidor:8000/temperatura"
+endpoint = "http://192.168.168.100:8000/temperatura"
+ntpserver = "192.168.168.100"
+#ntpserver = "time1.google.com"
 ssid = 'NETLAB-0024'
+#ssid = 'freeipluso'
 password = ''
 token_JWT = ''
 pins = dict()
@@ -34,10 +43,17 @@ def conectar_wifi():
     print('connected, ifconfig =', wlan.ifconfig())
 
 def sincronizar_relogio_ntp():
-    pass
+    rtc = RTC()
+    rtc.datetime((2026, 5, 21, 2, 10, 32, 36, 0))
+    try:
+        ntptime.host = ntpserver
+        ntptime.settime() 
+        print("Time synced to UTC:", time.localtime())
+    except Exception as e:
+        print(f"Failed to sync with NTP server {ntpserver}:", e)
 
 def configurar_pinos_GPIO_sensores():
-    pass
+    pins['Pin15'] = dht.DHT11(Pin(15))
 
 def setup():
     pins['Pin2'] = machine.Pin(2, machine.Pin.OUT)
@@ -63,12 +79,18 @@ def random_number_between(max:float, min:float, decimal_places) -> float:
     return (math.floor((random.random() * (max - min + 1))*10**decimal_places)/10**decimal_places) + min
 
 def ler_sensor_fisico(pin):
-    pass
+    if pin in pins:
+        pins[pin].measure()
+        temp = pins[pin].temperature()
+        print(temp)
+        return temp
+    else:
+        return None
 
 def piscar_LED_feedback():
     pins['Pin2'].on()
-    pins['Pin2'].off()
-    pass
+    tim = Timer(0)
+    tim.init(period=1000, mode=Timer.ONE_SHOT, callback=lambda t: pins['Pin2'].off())
 
 def loop():
     t0 = 0.0
@@ -83,9 +105,9 @@ def loop():
         t2 = random_number_between(10.0, 25.0, 2)
     else:
         # Leitura de sensores reais
-        t0 = ler_sensor_fisico('Pin0')
-        t1 = ler_sensor_fisico('Pin1')
-        t2 = ler_sensor_fisico('Pin3')
+        t0 = ler_sensor_fisico('Pin15') or 0
+        t1 = ler_sensor_fisico('Pin20') or 0
+        t2 = ler_sensor_fisico('Pin25') or 0
     # E) Construção do Objeto JSON
     payload = {
     "Equipamento_ID": equipment_id,
@@ -94,14 +116,18 @@ def loop():
     "Temp1": t1,
     "Temp2": t2
     }
+    payload = json.dumps(payload)
     # Envio Seguro via API
-    headers = {""" "Authorization": "Bearer " + token_JWT, """ "Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json"}
+    #headers = {"Authorization": "Bearer " + token_JWT, "Content-Type": "application/json"}
+    print(headers)
     print(payload)
     resposta = urequests.request('POST',endpoint, data=payload, headers=headers)
-    if resposta.status == 201:
+    print(resposta.status_code,resposta.text)
+    if resposta.status_code == 201:
         piscar_LED_feedback()
         print("Success")
-        time.sleep(0.1) # Intervalo de atualização
+        time.sleep(1) # Intervalo de atualização
 
 setup()
 
