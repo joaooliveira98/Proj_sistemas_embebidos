@@ -13,7 +13,7 @@ import ntptime
 
 # --- Configurações Globais ---
 debug_mode = True
-equipment_id = 10
+equipment_id = 3
 endpoint = "http://192.168.168.100:8000/temperatura"
 ntpserver = "192.168.168.100"
 token_endpoint = "http://192.168.168.100:8000/get-token"
@@ -103,44 +103,45 @@ def piscar_LED_feedback():
     tim.init(period=1000, mode=Timer.ONE_SHOT, callback=lambda t: pins['Pin2'].off())
 
 def loop():
-    t0 = 0.0
-    t1 = 0.0
-    t2 = 0.0
-    agora = obter_timestamp_formatado() # Formato: YYYY-MM-DD HH:MM:SS
-    # D) Lógica de Aquisição
-    if debug_mode == True:
-        # Geração de valores simulados
-        t0 = random_number_between(15.0, 30.0, 2)
-        t1 = random_number_between(20.0, 45.0, 2)
-        t2 = random_number_between(10.0, 25.0, 2)
-    else:
-        # Leitura de sensores reais
-        t0 = ler_sensor_fisico('Pin15') or 0
-        t1 = ler_sensor_fisico('Pin20') or 0
-        t2 = ler_sensor_fisico('Pin25') or 0
-    # E) Construção do Objeto JSON
-    payload = f"{equipment_id},{agora},{t0},{t1},{t2}"
-    #payload = json.dumps(payload)
-    # Envio Seguro via API
-    #headers = {"Content-Type": "application/json"}
-    print("loop: ",token_JWT["value"])
-    headers = {"Authorization": "Bearer " + token_JWT["value"], "Content-Type": "application/json"}
-    print(headers)
-    print(payload)
-    resposta = urequests.request('POST',endpoint, data=payload, headers=headers)
-    print(resposta.status_code,resposta.text)
-    if resposta.status_code == 201 or resposta.status_code == 200:
-        piscar_LED_feedback()
-        print("Success")
-        time.sleep(1) # Intervalo de atualização
-    else:
-        buscar_token()
+    while True:
+        t0 = 0.0
+        t1 = 0.0
+        t2 = 0.0
+        agora = obter_timestamp_formatado() # Formato: YYYY-MM-DD HH:MM:SS
+        # D) Lógica de Aquisição
+        if debug_mode == True:
+            # Geração de valores simulados
+            t0 = random_number_between(15.0, 30.0, 2)
+            t1 = random_number_between(20.0, 45.0, 2)
+            t2 = random_number_between(10.0, 25.0, 2)
+        else:
+            # Leitura de sensores reais
+            t0 = ler_sensor_fisico('Pin15') or 0
+            t1 = ler_sensor_fisico('Pin20') or 0
+            t2 = ler_sensor_fisico('Pin25') or 0
+        # E) Construção do Objeto JSON
+        payload = f"{equipment_id},{agora},{t0},{t1},{t2}"
+        #payload = json.dumps(payload)
+        # Envio Seguro via API
+        #headers = {"Content-Type": "application/json"}
+        print("loop: ",token_JWT["value"])
+        headers = {"Authorization": "Bearer " + token_JWT["value"], "Content-Type": "application/json"}
+        print(headers)
+        print(payload)
         resposta = urequests.request('POST',endpoint, data=payload, headers=headers)
         print(resposta.status_code,resposta.text)
         if resposta.status_code == 201 or resposta.status_code == 200:
             piscar_LED_feedback()
             print("Success")
-            time.sleep(1) # Intervalo de atualização
+            time.sleep(10) # Intervalo de atualização
+        else:
+            buscar_token()
+            resposta = urequests.request('POST',endpoint, data=payload, headers=headers)
+            print(resposta.status_code,resposta.text)
+            if resposta.status_code == 201 or resposta.status_code == 200:
+                piscar_LED_feedback()
+                print("Success")
+                time.sleep(10) # Intervalo de atualização
 
 setup()
 
