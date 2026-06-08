@@ -6,7 +6,6 @@ import machine
 from machine import Pin
 from machine import Timer
 from machine import RTC
-"""from threading import Timer"""
 import dht
 import json
 import network
@@ -17,11 +16,12 @@ debug_mode = True
 equipment_id = 10
 endpoint = "http://192.168.168.100:8000/temperatura"
 ntpserver = "192.168.168.100"
+token_endpoint = "http://192.168.168.100:8000/get-token"
 #ntpserver = "time1.google.com"
 ssid = 'NETLAB-0024'
 #ssid = 'freeipluso'
 password = ''
-token_JWT = ''
+token_JWT = {"value":''}
 pins = dict()
 
 def conectar_wifi():
@@ -52,6 +52,15 @@ def sincronizar_relogio_ntp():
     except Exception as e:
         print(f"Failed to sync with NTP server {ntpserver}:", e)
 
+def buscar_token():
+    try:
+        resposta = urequests.request('POST',token_endpoint, json={})
+        print("Using: ",token_endpoint,", token request → ",resposta.status_code,resposta.text)
+        token_JWT["value"] = resposta.json().get("access_token")
+        print("gotten",token_JWT)
+    except Exception as e:
+        print("Token request failed: ",e)
+
 def configurar_pinos_GPIO_sensores():
     pins['Pin15'] = dht.DHT11(Pin(15))
 
@@ -59,6 +68,7 @@ def setup():
     pins['Pin2'] = machine.Pin(2, machine.Pin.OUT)
     conectar_wifi()
     sincronizar_relogio_ntp()
+    buscar_token()
     if(not debug_mode):
         configurar_pinos_GPIO_sensores()
 
@@ -76,7 +86,7 @@ def obter_timestamp_formatado(): # Formato: YYYY-MM-DD HH:MM:SS
     return timeStr
 
 def random_number_between(max:float, min:float, decimal_places) -> float:
-    return (math.floor((random.random() * (max - min + 1))*10**decimal_places)/10**decimal_places) + min
+    return round((math.floor((random.random() * (max - min + 1))*10**decimal_places)/10**decimal_places) + min,decimal_places)
 
 def ler_sensor_fisico(pin):
     if pin in pins:
@@ -109,25 +119,28 @@ def loop():
         t1 = ler_sensor_fisico('Pin20') or 0
         t2 = ler_sensor_fisico('Pin25') or 0
     # E) Construção do Objeto JSON
-    payload = {
-    "Equipamento_ID": equipment_id,
-    "DataHora": agora,
-    "Temp0": t0,
-    "Temp1": t1,
-    "Temp2": t2
-    }
-    payload = json.dumps(payload)
+    payload = f"{equipment_id},{agora},{t0},{t1},{t2}"
+    #payload = json.dumps(payload)
     # Envio Seguro via API
-    headers = {"Content-Type": "application/json"}
-    #headers = {"Authorization": "Bearer " + token_JWT, "Content-Type": "application/json"}
+    #headers = {"Content-Type": "application/json"}
+    print("loop: ",token_JWT["value"])
+    headers = {"Authorization": "Bearer " + token_JWT["value"], "Content-Type": "application/json"}
     print(headers)
     print(payload)
     resposta = urequests.request('POST',endpoint, data=payload, headers=headers)
     print(resposta.status_code,resposta.text)
-    if resposta.status_code == 201:
+    if resposta.status_code == 201 or resposta.status_code == 200:
         piscar_LED_feedback()
         print("Success")
         time.sleep(1) # Intervalo de atualização
+    else:
+        buscar_token()
+        resposta = urequests.request('POST',endpoint, data=payload, headers=headers)
+        print(resposta.status_code,resposta.text)
+        if resposta.status_code == 201 or resposta.status_code == 200:
+            piscar_LED_feedback()
+            print("Success")
+            time.sleep(1) # Intervalo de atualização
 
 setup()
 
